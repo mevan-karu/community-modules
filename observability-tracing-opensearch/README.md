@@ -57,7 +57,7 @@ helm upgrade --install observability-tracing-opensearch \
   oci://ghcr.io/openchoreo/charts/observability-tracing-opensearch \
   --create-namespace \
   --namespace openchoreo-observability-plane \
-  --version 0.3.2 \
+  --version 0.3.3 \
   --set openSearchSetup.openSearchSecretName="opensearch-admin-credentials"
 ```
 
@@ -68,7 +68,7 @@ helm upgrade --install observability-tracing-opensearch \
 >   oci://ghcr.io/openchoreo/charts/observability-tracing-opensearch \
 >   --create-namespace \
 >   --namespace openchoreo-observability-plane \
->   --version 0.3.2 \
+>   --version 0.3.3 \
 >   --set openSearch.enabled=false \
 >   --set openSearchSetup.openSearchSecretName="opensearch-admin-credentials"
 > ```

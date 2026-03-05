@@ -47,12 +47,9 @@ data:
 
         extract:
           labels:
-            - key: openchoreo.dev/component-uid
-              tag_name: openchoreo.dev/component-uid
-            - key: openchoreo.dev/environment-uid
-              tag_name: openchoreo.dev/environment-uid
-            - key: openchoreo.dev/project-uid
-              tag_name: openchoreo.dev/project-uid
+            - tag_name: $$1
+              key_regex: (.*)
+              from: pod
             
           metadata:
             - k8s.pod.name
