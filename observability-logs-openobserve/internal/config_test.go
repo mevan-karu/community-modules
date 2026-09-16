@@ -50,6 +50,9 @@ func TestLoadConfig_Success(t *testing.T) {
 	if cfg.OpenObserveEventsStream != "k8s_events" {
 		t.Errorf("expected default OpenObserveEventsStream k8s_events, got %s", cfg.OpenObserveEventsStream)
 	}
+	if cfg.OpenObserveAuditStream != "audit_logs" {
+		t.Errorf("expected default OpenObserveAuditStream audit_logs, got %s", cfg.OpenObserveAuditStream)
+	}
 	if cfg.OpenObserveUser != "admin" {
 		t.Errorf("unexpected OpenObserveUser: %s", cfg.OpenObserveUser)
 	}
@@ -70,6 +73,7 @@ func TestLoadConfig_CustomValues(t *testing.T) {
 	vars["OPENOBSERVE_ORG"] = "myorg"
 	vars["OPENOBSERVE_STREAM"] = "mystream"
 	vars["OPENOBSERVE_EVENTS_STREAM"] = "myevents"
+	vars["OPENOBSERVE_AUDIT_STREAM"] = "myaudit"
 	setEnvVars(t, vars)
 
 	cfg, err := LoadConfig()
@@ -88,6 +92,9 @@ func TestLoadConfig_CustomValues(t *testing.T) {
 	}
 	if cfg.OpenObserveEventsStream != "myevents" {
 		t.Errorf("expected OpenObserveEventsStream myevents, got %s", cfg.OpenObserveEventsStream)
+	}
+	if cfg.OpenObserveAuditStream != "myaudit" {
+		t.Errorf("expected OpenObserveAuditStream myaudit, got %s", cfg.OpenObserveAuditStream)
 	}
 }
 

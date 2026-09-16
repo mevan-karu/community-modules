@@ -167,4 +167,49 @@ else
   fi
 fi
 
+## 4. Create the audit log stream with its retention, or update the retention
+#     Settings cannot be applied to a stream that does not exist yet.
+
+AUDIT_STREAM="${OPENOBSERVE_AUDIT_STREAM:-audit_logs}"
+AUDIT_RETENTION_DAYS="${AUDIT_LOGS_RETENTION_DAYS:-365}"
+
+if [[ ! "$AUDIT_STREAM" =~ ^[a-z0-9_]+$ ]]; then
+  echo "ERROR: Invalid audit stream name '$AUDIT_STREAM': expected lowercase letters, digits and '_'"
+  exit 1
+fi
+if [[ ! "$AUDIT_RETENTION_DAYS" =~ ^[0-9]+$ ]] || [ "$AUDIT_RETENTION_DAYS" -lt 3 ]; then
+  echo "ERROR: Invalid audit log retention '$AUDIT_RETENTION_DAYS': expected a whole number of days, at least 3"
+  exit 1
+fi
+
+echo "Configuring audit log stream '$AUDIT_STREAM' with ${AUDIT_RETENTION_DAYS}d retention..."
+
+SCHEMA_CODE=$(curl -s -o /dev/null -w "%{http_code}" -u "$OPENOBSERVE_USERNAME:$OPENOBSERVE_PASSWORD" \
+  "$OPENOBSERVE_URL/api/$OPENOBSERVE_ORG/streams/$AUDIT_STREAM/schema?type=logs")
+
+if [ "$SCHEMA_CODE" = "404" ]; then
+  RESPONSE=$(curl -s -w "\n%{http_code}" -u "$OPENOBSERVE_USERNAME:$OPENOBSERVE_PASSWORD" \
+    -X POST "$OPENOBSERVE_URL/api/$OPENOBSERVE_ORG/streams/$AUDIT_STREAM?type=logs" \
+    -H "Content-Type: application/json" \
+    -d "{\"fields\": [], \"settings\": {\"data_retention\": $AUDIT_RETENTION_DAYS}}")
+elif [ "$SCHEMA_CODE" = "200" ]; then
+  RESPONSE=$(curl -s -w "\n%{http_code}" -u "$OPENOBSERVE_USERNAME:$OPENOBSERVE_PASSWORD" \
+    -X PUT "$OPENOBSERVE_URL/api/$OPENOBSERVE_ORG/streams/$AUDIT_STREAM/settings?type=logs" \
+    -H "Content-Type: application/json" \
+    -d "{\"data_retention\": $AUDIT_RETENTION_DAYS}")
+else
+  echo "ERROR: Failed to look up audit log stream (HTTP $SCHEMA_CODE)"
+  exit 1
+fi
+
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+BODY=$(echo "$RESPONSE" | sed '$d')
+
+if [ "$HTTP_CODE" = "200" ]; then
+  echo -e "Audit log stream configured successfully!\n"
+else
+  echo "ERROR: Failed to configure audit log stream (HTTP $HTTP_CODE). Response: $BODY"
+  exit 1
+fi
+
 echo -e "OpenObserve configuration completed successfully!\n"

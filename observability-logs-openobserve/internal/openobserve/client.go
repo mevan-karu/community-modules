@@ -129,6 +129,7 @@ type Client struct {
 	org          string
 	stream       string
 	eventsStream string
+	auditStream  string
 	user         string
 	token        string
 	httpClient   *http.Client
@@ -141,6 +142,7 @@ func NewClient(baseURL, org, stream, eventsStream, user, token string, logger *s
 		org:          org,
 		stream:       stream,
 		eventsStream: eventsStream,
+		auditStream:  DefaultAuditStream,
 		user:         user,
 		token:        token,
 		httpClient: &http.Client{

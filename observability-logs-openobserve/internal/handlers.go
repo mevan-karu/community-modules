@@ -116,6 +116,13 @@ func (h *LogsHandler) QueryEvents(ctx context.Context, request gen.QueryEventsRe
 		}, nil
 	}
 
+	if request.Body.SearchScope == nil {
+		return gen.QueryEvents501JSONResponse{
+			Title:   ptr(gen.NotImplemented),
+			Message: ptr("unscoped event queries are not supported by this adapter"),
+		}, nil
+	}
+
 	// Try to interpret the search scope as a WorkflowSearchScope first.
 	// A WorkflowSearchScope is identified by having a workflowRunName field.
 	workflowScope, err := request.Body.SearchScope.AsWorkflowSearchScope()
@@ -224,7 +231,7 @@ func toEventsQueryResponse(result *openobserve.EventsResult) gen.EventsQueryResp
 
 	return gen.EventsQueryResponse{
 		Events: &entries,
-		Total:  &result.TotalCount,
+		Total:  result.TotalCount,
 		TookMs: &result.Took,
 	}
 }
@@ -468,7 +475,7 @@ func (h *LogsHandler) HandleAlertWebhook(ctx context.Context, request gen.Handle
 		h.logger.Warn("Alert webhook received with nil body")
 		return gen.HandleAlertWebhook200JSONResponse{
 			Message: ptr("alert webhook received successfully"),
-			Status:  ptr(gen.Success),
+			Status:  ptr(gen.AlertWebhookResponseStatusSuccess),
 		}, nil
 	}
 	body := *request.Body
@@ -478,7 +485,7 @@ func (h *LogsHandler) HandleAlertWebhook(ctx context.Context, request gen.Handle
 		h.logger.Error("Failed to parse alert webhook body", slog.Any("error", err))
 		return gen.HandleAlertWebhook200JSONResponse{
 			Message: ptr("alert webhook received successfully"),
-			Status:  ptr(gen.Success),
+			Status:  ptr(gen.AlertWebhookResponseStatusSuccess),
 		}, nil
 	}
 
@@ -505,7 +512,7 @@ func (h *LogsHandler) HandleAlertWebhook(ctx context.Context, request gen.Handle
 
 	return gen.HandleAlertWebhook200JSONResponse{
 		Message: ptr("alert webhook received successfully"),
-		Status:  ptr(gen.Success),
+		Status:  ptr(gen.AlertWebhookResponseStatusSuccess),
 	}, nil
 }
 

@@ -166,6 +166,68 @@ helm upgrade --install observability-logs-openobserve \
 > - Set `common.openObserveTlsEnabled=true` if the obs gateway listener is HTTPS, or `false` if it is plain HTTP.
 > - `common.openObserveOrg` and `common.openObserveStream` must match the organization and stream configured in the observability plane cluster.
 > - The adapter and setup job are disabled because they only need to run on the observability plane cluster.
+> - On the **control plane** cluster, add `--set auditLogs.enabled=true` to also collect the audit trail. See [Enable audit log collection](#enable-audit-log-collection).
+
+## Enable audit log collection
+
+OpenChoreo's audit trail is written by `openchoreo-api` and `observer` to their container
+logs. This module can route those records to a stream of their own, `audit_logs`, kept
+under its own retention:
+
+```bash
+helm upgrade observability-logs-openobserve \
+  oci://ghcr.io/openchoreo/helm-charts/observability-logs-openobserve \
+  --namespace openchoreo-observability-plane \
+  --version 0.0.0-latest-dev \
+  --reuse-values \
+  --set fluent-bit.enabled=true \
+  --set fluentBitCustomizations.clusterInstance=<cluster-name> \
+  --set auditLogs.enabled=true
+```
+
+In a multi-cluster topology, set `auditLogs.enabled` on the cluster running `openchoreo-api`
+and `observer`, which is not necessarily the one running OpenObserve.
+
+### Trusted producers
+
+`auditLogs.producers` is an allowlist. **Each entry grants a workload the right to write into
+the audit trail.** Entries match on the container log filename the kubelet writes, so a pod
+outside the list that prints an audit-shaped line still lands in the container logs stream.
+
+```yaml
+auditLogs:
+  producers:
+    - producer: openchoreo-api
+      namespace: openchoreo-control-plane
+      container: api-server
+    - producer: observer
+      namespace: openchoreo-observability-plane
+      container: observer
+```
+
+If the control plane or observability plane is installed into a non-default namespace, edit
+these entries, or audit collection silently stops.
+
+### Configuration
+
+| Value | Default | Purpose |
+| ----- | ------- | ------- |
+| `auditLogs.enabled` | `false` | Route audit records to their own stream |
+| `auditLogs.producers` | the two above | The trusted-producer allowlist |
+| `common.openObserveAuditStream` | `audit_logs` | Stream name; lowercase letters, digits and `_` only |
+| `openObserveSetup.auditLogsRetentionDays` | `365` | Audit stream retention in days, at least 3 |
+
+The setup job creates the audit stream with its retention on every install, and changing
+the retention and upgrading applies it to the existing stream.
+
+### Limitations
+
+- A record's time in OpenObserve is its `event_time`, and OpenObserve discards records older
+  than `ZO_INGEST_ALLOWED_UPTO` hours. The bundled OpenObserve charts set it to `8760` to match
+  the default retention. If you raise `auditLogsRetentionDays`, or ship to an OpenObserve this
+  chart does not install, set it accordingly, or audit records delivered late are dropped.
+- `resource.metadata` and `metadata` are returned in full, but OpenObserve flattens them into
+  columns on ingest, so each distinct key adds a column to the stream.
 
 ## Dependencies
 

@@ -18,6 +18,7 @@ type Config struct {
 	OpenObserveOrg          string
 	OpenObserveStream       string
 	OpenObserveEventsStream string
+	OpenObserveAuditStream  string
 	OpenObserveUser         string
 	OpenObservePassword     string
 	ObserverURL             string
@@ -31,6 +32,7 @@ func LoadConfig() (*Config, error) {
 	openObserveOrg := getEnv("OPENOBSERVE_ORG", "default")
 	openObserveStream := getEnv("OPENOBSERVE_STREAM", "default")
 	openObserveEventsStream := getEnv("OPENOBSERVE_EVENTS_STREAM", "k8s_events")
+	openObserveAuditStream := getEnv("OPENOBSERVE_AUDIT_STREAM", "audit_logs")
 	openObserveUser := getEnv("OPENOBSERVE_USER", "")
 	openObservePassword := getEnv("OPENOBSERVE_PASSWORD", "")
 	observerURL := getEnv("OBSERVER_URL", "")
@@ -80,6 +82,7 @@ func LoadConfig() (*Config, error) {
 		OpenObserveOrg:          openObserveOrg,
 		OpenObserveStream:       openObserveStream,
 		OpenObserveEventsStream: openObserveEventsStream,
+		OpenObserveAuditStream:  openObserveAuditStream,
 		OpenObserveUser:         openObserveUser,
 		OpenObservePassword:     openObservePassword,
 		ObserverURL:             observerURL,

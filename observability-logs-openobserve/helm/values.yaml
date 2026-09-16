@@ -5,6 +5,8 @@ common:
   openObserveOrg: "default"
   openObserveStream: "default"
   openObserveEventsStream: "k8s_events"
+  # Lowercase letters, digits and '_' only.
+  openObserveAuditStream: "audit_logs"
   # Hostnames placed on the OpenObserve ingest HTTPRoute (gateway-default). Set this
   # to the gateway hostname remote Fluent Bit instances target in a multi-cluster setup.
   # Applies regardless of whether the standalone or HA OpenObserve chart is used.
@@ -14,6 +16,20 @@ common:
   openObserveHost: "openobserve"
   openObservePort: 5080
   openObserveTlsEnabled: false
+
+auditLogs:
+  # Requires fluent-bit where openchoreo-api and observer run.
+  enabled: false
+
+  # Each entry grants a workload write access to the audit trail. Update these if the
+  # control or observability plane runs in a non-default namespace.
+  producers:
+    - producer: openchoreo-api
+      namespace: openchoreo-control-plane
+      container: api-server
+    - producer: observer
+      namespace: openchoreo-observability-plane
+      container: observer
 
 fluent-bit:
   enabled: true
@@ -105,6 +121,10 @@ openobserve-standalone:
   # of the logs adapter running in the cluster. Hence this must be allowed.
   - name: ZO_SSRF_ALLOW_LOOPBACK
     value: "true"
+  # Audit records keep their event time, and the default 5 hour ingest window would drop older records
+  # replayed by Fluent Bit. Matches the default audit retention.
+  - name: ZO_INGEST_ALLOWED_UPTO
+    value: "8760"
 
   fullnameOverride: "openobserve"
   auth:
@@ -132,6 +152,9 @@ openobserve:
   # of the logs adapter running in the cluster. Hence this must be allowed.
   - name: ZO_SSRF_ALLOW_LOOPBACK
     value: "true"
+  # See openobserve-standalone.extraEnv.
+  - name: ZO_INGEST_ALLOWED_UPTO
+    value: "8760"
 
   fullnameOverride: "openobserve"
 
@@ -167,6 +190,9 @@ adapter:
 
 openObserveSetup:
   enabled: true
+
+  # Audit stream retention in days.
+  auditLogsRetentionDays: 365
 
   image:
     repository: "ghcr.io/openchoreo/observability-logs-openobserve-setup"

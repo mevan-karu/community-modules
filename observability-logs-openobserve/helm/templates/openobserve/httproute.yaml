@@ -22,6 +22,9 @@ spec:
     - path:
         type: PathPrefix
         value: /api/{{ .Values.common.openObserveOrg }}/{{ .Values.common.openObserveStream }}/_json
+    - path:
+        type: PathPrefix
+        value: /api/{{ .Values.common.openObserveOrg }}/{{ include "observability-logs-openobserve.auditStream" . }}/_json
     backendRefs:
     - name: openobserve
       port: 5080

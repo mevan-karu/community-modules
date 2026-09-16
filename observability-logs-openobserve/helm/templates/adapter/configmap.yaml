@@ -15,5 +15,6 @@ data:
   OPENOBSERVE_ORG: {{ .Values.common.openObserveOrg | quote }}
   OPENOBSERVE_STREAM: {{ .Values.common.openObserveStream | quote }}
   OPENOBSERVE_EVENTS_STREAM: {{ .Values.common.openObserveEventsStream | quote }}
+  OPENOBSERVE_AUDIT_STREAM: {{ include "observability-logs-openobserve.auditStream" . | quote }}
   OBSERVER_URL: {{ .Values.adapter.observerUrl | quote }}
 {{- end }}

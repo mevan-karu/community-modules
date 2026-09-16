@@ -88,7 +88,7 @@ func TestHandleAlertWebhook_NilBody(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected 200 response, got %T", resp)
 	}
-	if webhookResp.Status == nil || *webhookResp.Status != gen.Success {
+	if webhookResp.Status == nil || *webhookResp.Status != gen.AlertWebhookResponseStatusSuccess {
 		t.Error("expected status Success")
 	}
 }
@@ -1394,7 +1394,7 @@ func TestHandleAlertWebhook_ValidBody(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected 200 response, got %T", resp)
 	}
-	if webhookResp.Status == nil || *webhookResp.Status != gen.Success {
+	if webhookResp.Status == nil || *webhookResp.Status != gen.AlertWebhookResponseStatusSuccess {
 		t.Error("expected status Success")
 	}
 
@@ -1432,6 +1432,24 @@ func TestQueryEvents_NilBody(t *testing.T) {
 	}
 }
 
+func TestQueryEvents_RejectsAnUnscopedSweepAsNotImplemented(t *testing.T) {
+	handler := NewLogsHandler(nil, nil, testLogger())
+	reasons := []string{"BackOff"}
+	resp, err := handler.QueryEvents(context.Background(), gen.QueryEventsRequestObject{
+		Body: &gen.EventsQueryRequest{
+			StartTime: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			EndTime:   time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
+			Reasons:   &reasons,
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := resp.(gen.QueryEvents501JSONResponse); !ok {
+		t.Fatalf("expected 501 response, got %T", resp)
+	}
+}
+
 func TestQueryEvents_MissingNamespace(t *testing.T) {
 	handler := NewLogsHandler(nil, nil, testLogger())
 
@@ -1442,7 +1460,7 @@ func TestQueryEvents_MissingNamespace(t *testing.T) {
 		Body: &gen.EventsQueryRequest{
 			StartTime:   time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 			EndTime:     time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
-			SearchScope: scope,
+			SearchScope: &scope,
 		},
 	})
 	if err != nil {
@@ -1485,7 +1503,7 @@ func TestQueryEvents_ComponentScope(t *testing.T) {
 		Body: &gen.EventsQueryRequest{
 			StartTime:   time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 			EndTime:     time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
-			SearchScope: scope,
+			SearchScope: &scope,
 		},
 	})
 	if err != nil {
@@ -1506,8 +1524,8 @@ func TestQueryEvents_ComponentScope(t *testing.T) {
 	if event.Reason == nil || *event.Reason != "Completed" {
 		t.Errorf("expected reason Completed, got %v", event.Reason)
 	}
-	if ok200.Total == nil || *ok200.Total != 9 {
-		t.Errorf("expected total 9, got %v", ok200.Total)
+	if ok200.Total != 9 {
+		t.Errorf("expected total 9, got %d", ok200.Total)
 	}
 }
 
@@ -1542,7 +1560,7 @@ func TestQueryEvents_WorkflowScope(t *testing.T) {
 		Body: &gen.EventsQueryRequest{
 			StartTime:   time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 			EndTime:     time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
-			SearchScope: scope,
+			SearchScope: &scope,
 		},
 	})
 	if err != nil {
@@ -1573,7 +1591,7 @@ func TestQueryEvents_WorkflowScope_MissingRunName(t *testing.T) {
 		Body: &gen.EventsQueryRequest{
 			StartTime:   time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 			EndTime:     time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
-			SearchScope: scope,
+			SearchScope: &scope,
 		},
 	})
 	if err != nil {

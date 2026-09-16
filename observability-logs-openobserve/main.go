@@ -40,6 +40,7 @@ func main() {
 		slog.String("OpenObserve Org", cfg.OpenObserveOrg),
 		slog.String("OpenObserve Stream", cfg.OpenObserveStream),
 		slog.String("OpenObserve Events Stream", cfg.OpenObserveEventsStream),
+		slog.String("OpenObserve Audit Stream", cfg.OpenObserveAuditStream),
 		slog.String("OpenObserve User", cfg.OpenObserveUser),
 		slog.String("OpenObserve Password", string(cfg.OpenObservePassword[0])+"*****"),
 		slog.String("Server Port", cfg.ServerPort),
@@ -53,7 +54,7 @@ func main() {
 		cfg.OpenObserveUser,
 		cfg.OpenObservePassword,
 		logger,
-	)
+	).WithAuditStream(cfg.OpenObserveAuditStream)
 
 	// Check OpenObserve connectivity when starting the adapter. If the connection fails,
 	// exit with an error because the adapter cannot function without connecting to

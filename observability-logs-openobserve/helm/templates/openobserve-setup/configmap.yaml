@@ -12,4 +12,6 @@ metadata:
 data:
   OPENOBSERVE_URL: "{{ if .Values.common.openObserveTlsEnabled }}https{{ else }}http{{ end }}://{{ .Values.common.openObserveHost }}:{{ .Values.common.openObservePort }}"
   OPENOBSERVE_ORG: {{ .Values.common.openObserveOrg | quote }}
+  OPENOBSERVE_AUDIT_STREAM: {{ include "observability-logs-openobserve.auditStream" . | quote }}
+  AUDIT_LOGS_RETENTION_DAYS: {{ .Values.openObserveSetup.auditLogsRetentionDays | quote }}
 {{- end }}
