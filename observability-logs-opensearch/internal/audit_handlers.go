@@ -222,8 +222,8 @@ func (h *LogsHandler) QueryAuditLogFilterValues(
 
 func toAuditLogsQueryParams(body *gen.AuditLogsQueryRequest) opensearch.AuditLogsQueryParams {
 	params := opensearch.AuditLogsQueryParams{
-		StartTime:    body.StartTime.Format(time.RFC3339),
-		EndTime:      body.EndTime.Format(time.RFC3339),
+		StartTime:    body.StartTime.Format(time.RFC3339Nano),
+		EndTime:      body.EndTime.Format(time.RFC3339Nano),
 		Actions:      derefSlice(body.Action),
 		Producers:    derefSlice(body.Producer),
 		OperationIDs: derefSlice(body.OperationId),

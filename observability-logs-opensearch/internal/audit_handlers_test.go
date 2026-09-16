@@ -236,6 +236,44 @@ func TestQueryAuditLogs_SearchesTheAuditWildcard(t *testing.T) {
 	}
 }
 
+func TestQueryAuditLogs_KeepsSubSecondWindowBounds(t *testing.T) {
+	server := newAuditServer(t, auditSearchPayload(nil, 0))
+	defer server.Close()
+
+	body := &gen.AuditLogsQueryRequest{
+		StartTime: auditStart.Add(1500 * time.Microsecond),
+		EndTime:   auditEnd.Add(250 * time.Millisecond),
+	}
+	if _, err := auditHandler(t, server.URL).QueryAuditLogs(
+		context.Background(), gen.QueryAuditLogsRequestObject{Body: body}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	bounds := auditRangeBounds(t, server.searchBody)
+	if bounds["gte"] != "2026-09-01T00:00:00.0015Z" || bounds["lt"] != "2026-09-02T00:00:00.25Z" {
+		t.Errorf("event_time range = %v, want the sub-second bounds that were requested", bounds)
+	}
+}
+
+func auditRangeBounds(t *testing.T, searchBody map[string]interface{}) map[string]interface{} {
+	t.Helper()
+	query, _ := searchBody["query"].(map[string]interface{})
+	boolQuery, _ := query["bool"].(map[string]interface{})
+	filters, _ := boolQuery["filter"].([]interface{})
+	for _, f := range filters {
+		filter, _ := f.(map[string]interface{})
+		rangeFilter, ok := filter["range"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if bounds, ok := rangeFilter[osearch.AuditEventTimeField].(map[string]interface{}); ok {
+			return bounds
+		}
+	}
+	t.Fatalf("no event_time range filter in %v", searchBody)
+	return nil
+}
+
 func TestQueryAuditLogs_TimelineKeepsEmptyBuckets(t *testing.T) {
 	payload := auditSearchPayload(nil, 0)
 	payload["aggregations"] = map[string]interface{}{
