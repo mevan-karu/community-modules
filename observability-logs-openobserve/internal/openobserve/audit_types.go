@@ -150,7 +150,7 @@ func ParseAuditRecord(row map[string]interface{}) (AuditRecord, error) {
 		return AuditRecord{}, fmt.Errorf("failed to parse log line: %w", err)
 	}
 
-	// action and category are not required: unauthenticated rejections emit them empty.
+	// action and category are not required: a record with no resolved operation carries them empty.
 	for _, required := range []struct{ field, value string }{
 		{"schema_version", record.SchemaVersion},
 		{"event_id", record.EventID},

@@ -50,19 +50,19 @@ func TestParseAuditRecord_RejectsAMissingIdentityField(t *testing.T) {
 	}
 }
 
-// A request rejected before routing resolves an action is recorded with both empty.
+// A record with no resolved action carries both action and category empty.
 func TestParseAuditRecord_KeepsARecordWithNoResolvedAction(t *testing.T) {
 	source := completeAuditSource()
 	source["action"] = ""
 	source["category"] = ""
-	source["result"] = "unauthenticated"
+	source["result"] = "failure"
 	source["actor"] = map[string]interface{}{"type": "anonymous", "id": "anonymous"}
 
 	record, err := ParseAuditRecord(Hit{ID: "doc-1", Source: source})
 	if err != nil {
 		t.Fatalf("ParseAuditRecord() error = %v, want the record kept", err)
 	}
-	if record.Result != "unauthenticated" || record.Actor.ID != "anonymous" {
-		t.Errorf("record = %+v, want the anonymous rejection intact", record)
+	if record.Result != "failure" || record.Actor.ID != "anonymous" {
+		t.Errorf("record = %+v, want the anonymous record intact", record)
 	}
 }

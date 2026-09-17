@@ -106,9 +106,8 @@ func ParseAuditRecord(hit Hit) (AuditRecord, error) {
 		return AuditRecord{}, fmt.Errorf("failed to parse document: %w", err)
 	}
 
-	// action and category are deliberately absent: a producer that rejects a request
-	// before routing resolves one emits them empty, and those unauthenticated records
-	// are worth keeping.
+	// action and category are deliberately absent: a record with no resolved operation
+	// carries them empty, and such records are worth keeping.
 	for _, required := range []struct{ field, value string }{
 		{"schema_version", record.SchemaVersion},
 		{"event_id", record.EventID},

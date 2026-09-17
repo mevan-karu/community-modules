@@ -56,7 +56,7 @@ func TestParseAuditRecord_KeepsARecordWithNoResolvedAction(t *testing.T) {
 	line := strings.Replace(auditLine, `"action":"create_project","category":"management",`, "", 1)
 	record, err := ParseAuditRecord(map[string]interface{}{"log": line})
 	if err != nil {
-		t.Fatalf("expected an unauthenticated rejection to be kept: %v", err)
+		t.Fatalf("expected a record with no resolved action to be kept: %v", err)
 	}
 	if record.Action != "" || record.Category != "" {
 		t.Errorf("action = %q, category = %q", record.Action, record.Category)

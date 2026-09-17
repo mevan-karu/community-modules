@@ -179,7 +179,7 @@ func invalidAuditEnum(body *gen.AuditLogsQueryRequest) string {
 		for _, r := range *body.Result {
 			switch r {
 			case gen.AuditLogsQueryRequestResultDenied, gen.AuditLogsQueryRequestResultFailure,
-				gen.AuditLogsQueryRequestResultSuccess, gen.AuditLogsQueryRequestResultUnauthenticated:
+				gen.AuditLogsQueryRequestResultSuccess:
 			default:
 				return "unknown result: " + string(r)
 			}
