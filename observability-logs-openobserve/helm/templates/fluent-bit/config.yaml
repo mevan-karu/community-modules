@@ -89,17 +89,28 @@ data:
         http_passwd ${OPENOBSERVE_PASSWORD}
         tls {{ if .Values.common.openObserveTlsEnabled }}On{{ else }}Off{{ end }}
 {{- if .Values.auditLogs.enabled }}
+{{- $c := .Values.common }}
+{{- $out := dict "host" $c.openObserveHost "port" $c.openObservePort "org" $c.openObserveOrg "tls" $c.openObserveTlsEnabled "env" "OPENOBSERVE" }}
+{{- with .Values.auditLogs.output }}
+{{- if .host }}
+{{- $tls := $out.tls }}
+{{- if kindIs "bool" .tlsEnabled }}
+{{- $tls = .tlsEnabled }}
+{{- end }}
+{{- $out = dict "host" .host "port" (.port | default $out.port) "org" (.org | default $out.org) "tls" $tls "env" "AUDIT_OPENOBSERVE" }}
+{{- end }}
+{{- end }}
 
     [OUTPUT]
         Name http
         Match audit.*
-        Host {{ .Values.common.openObserveHost }}
-        Port {{ .Values.common.openObservePort }}
-        URI /api/{{ .Values.common.openObserveOrg }}/{{ include "observability-logs-openobserve.auditStream" . }}/_json
+        Host {{ $out.host }}
+        Port {{ $out.port }}
+        URI /api/{{ $out.org }}/{{ include "observability-logs-openobserve.auditStream" . }}/_json
         Format json
-        http_user ${OPENOBSERVE_USERNAME}
-        http_passwd ${OPENOBSERVE_PASSWORD}
-        tls {{ if .Values.common.openObserveTlsEnabled }}On{{ else }}Off{{ end }}
+        http_user {{ printf "${%s_USERNAME}" $out.env }}
+        http_passwd {{ printf "${%s_PASSWORD}" $out.env }}
+        tls {{ if $out.tls }}On{{ else }}Off{{ end }}
 {{- end }}
 
   parsers.conf: |

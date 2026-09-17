@@ -89,14 +89,21 @@ data:
         tls.vhost {{ index .Values "fluent-bit" "openSearchVHost" | default "opensearch" }}
 {{- if .Values.auditLogs.enabled }}
 
+{{- $out := dict "host" (index .Values "fluent-bit" "openSearchHost") "port" (index .Values "fluent-bit" "openSearchPort") "vHost" (index .Values "fluent-bit" "openSearchVHost" | default "opensearch") "env" "OPENSEARCH" }}
+{{- with .Values.auditLogs.output }}
+{{- if .host }}
+{{- $out = dict "host" .host "port" (.port | default $out.port) "vHost" (.vHost | default .host) "env" "AUDIT_OPENSEARCH" }}
+{{- end }}
+{{- end }}
+
 {{- /* The output above matches kube.*, so audit records do not also land there. */}}
     [OUTPUT]
         Name opensearch
-        Host {{ index .Values "fluent-bit" "openSearchHost" }}
-        Port {{ index .Values "fluent-bit" "openSearchPort" }}
+        Host {{ $out.host }}
+        Port {{ $out.port }}
         Generate_ID On
-        HTTP_Passwd ${OPENSEARCH_PASSWORD}
-        HTTP_User ${OPENSEARCH_USERNAME}
+        HTTP_Passwd {{ printf "${%s_PASSWORD}" $out.env }}
+        HTTP_User {{ printf "${%s_USERNAME}" $out.env }}
         Logstash_Format On
         Logstash_DateFormat %Y-%m-%d
         Logstash_Prefix {{ include "observability-logs-opensearch.auditIndexPrefix" . | trimSuffix "-" }}
@@ -105,7 +112,7 @@ data:
         Suppress_Type_Name On
         tls On
         tls.verify Off
-        tls.vhost {{ index .Values "fluent-bit" "openSearchVHost" | default "opensearch" }}
+        tls.vhost {{ $out.vHost }}
 {{- end }}
 
   parsers.conf: |

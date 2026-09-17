@@ -188,6 +188,47 @@ helm upgrade observability-logs-openobserve \
 In a multi-cluster topology, set `auditLogs.enabled` on the cluster running `openchoreo-api`
 and `observer`, which is not necessarily the one running OpenObserve.
 
+### Multi-cluster audit collection
+
+`observer` runs in the observability plane cluster and `openchoreo-api` in the control plane cluster, so both need Fluent Bit with audit enabled. Data plane and workflow plane clusters run neither producer and do not need `auditLogs.enabled`.
+
+On the **observability plane cluster**, Fluent Bit ships to the in-cluster OpenObserve:
+
+```bash
+helm upgrade observability-logs-openobserve \
+  oci://ghcr.io/openchoreo/helm-charts/observability-logs-openobserve \
+  --namespace openchoreo-observability-plane \
+  --version 0.0.0-latest-dev \
+  --reuse-values \
+  --set fluent-bit.enabled=true \
+  --set fluentBitCustomizations.clusterInstance=<op-cluster-name> \
+  --set auditLogs.enabled=true
+```
+
+On the **control plane cluster**, install the chart with only Fluent Bit enabled, as in [Remote cluster setup](#remote-cluster-setup-data-plane--workflow-plane-clusters), with audit enabled:
+
+```bash
+helm upgrade --install observability-logs-openobserve \
+  oci://ghcr.io/openchoreo/helm-charts/observability-logs-openobserve \
+  --create-namespace \
+  --namespace openchoreo-observability-plane \
+  --version 0.0.0-latest-dev \
+  --set fluent-bit.enabled=true \
+  --set fluentBitCustomizations.clusterInstance=<cp-cluster-name> \
+  --set openobserve-standalone.enabled=false \
+  --set openobserve.enabled=false \
+  --set openObserveSetup.enabled=false \
+  --set adapter.enabled=false \
+  --set common.openObserveHost=openobserve.<OBS_BASE_DOMAIN> \
+  --set common.openObservePort=<gateway-port> \
+  --set common.openObserveTlsEnabled=true \
+  --set auditLogs.enabled=true
+```
+
+The `HTTPRoute` on the observability plane routes the audit stream's ingest path as well as the container logs stream's, so no extra gateway configuration is needed.
+
+`auditLogs.producers` needs no per-cluster change: it matches on namespace and container name, not on the cluster. Each record carries the `openchoreo_cluster_instance` of the cluster it was collected in.
+
 ### Trusted producers
 
 `auditLogs.producers` is an allowlist. **Each entry grants a workload the right to write into
@@ -216,9 +257,30 @@ these entries, or audit collection silently stops.
 | `auditLogs.producers` | the two above | The trusted-producer allowlist |
 | `common.openObserveAuditStream` | `audit_logs` | Stream name; lowercase letters, digits and `_` only |
 | `openObserveSetup.auditLogsRetentionDays` | `365` | Audit stream retention in days, at least 3 |
+| `auditLogs.output.host` | `""` | OpenObserve to ship audit records to; empty uses `common.openObserveHost` |
+| `auditLogs.output.port` | `common.openObservePort` | Port of `auditLogs.output.host` |
+| `auditLogs.output.org` | `common.openObserveOrg` | Organization on `auditLogs.output.host` |
+| `auditLogs.output.tlsEnabled` | `common.openObserveTlsEnabled` | Use TLS to reach `auditLogs.output.host` |
 
 The setup job creates the audit stream with its retention on every install, and changing
 the retention and upgrading applies it to the existing stream.
+
+#### Shipping audit records to a separate OpenObserve
+
+By default audit records go to the same OpenObserve as the container logs. To keep the audit trail elsewhere, for example one OpenObserve that several observability planes report their audit records to, set `auditLogs.output.host`:
+
+```bash
+--set auditLogs.output.host=openobserve-audit.<BASE_DOMAIN> \
+--set auditLogs.output.port=<port> \
+--set auditLogs.output.org=<org> \
+--set auditLogs.output.tlsEnabled=true
+```
+
+Port, organization and TLS fall back to their `common.*` values when unset, and are ignored unless the host is set. The stream is still `common.openObserveAuditStream`. Setting the host also switches Fluent Bit to the `openobserve-audit-credentials` Secret, even if the host names the same instance, so it must exist in the release namespace with `ZO_ROOT_USER_EMAIL` and `ZO_ROOT_USER_PASSWORD` keys. If it is missing, Fluent Bit logs `variable ${AUDIT_OPENOBSERVE_USERNAME} is used but not set` and the destination rejects the writes. Container logs are unaffected.
+
+Records from each cluster keep their `openchoreo_cluster_instance`, so a shared destination can still tell the clusters apart.
+
+This chart only ships records to that OpenObserve. It does not configure it, and the adapter keeps reading audit logs from `common.openObserveHost`'s OpenObserve. On the destination, create the audit stream with its retention and set `ZO_INGEST_ALLOWED_UPTO` as described under [Limitations](#limitations). If the destination is another release of this chart reached through its gateway, `auditLogs.output.org` and `common.openObserveAuditStream` must match that release's `common.openObserveOrg` and `common.openObserveAuditStream`, because its `HTTPRoute` only routes that path.
 
 ### Limitations
 

@@ -208,6 +208,45 @@ set — in the cluster hosting `openchoreo-api` and `observer`, which is not nec
 the cluster hosting OpenSearch. See [Multi-cluster topology](#multi-cluster-topology) for
 how to point a remote Fluent Bit at the observability plane.
 
+### Multi-cluster audit collection
+
+`observer` runs in the observability plane cluster and `openchoreo-api` in the control plane cluster, so both need Fluent Bit with audit enabled. Data plane and workflow plane clusters run neither producer and do not need `auditLogs.enabled`.
+
+On the **observability plane cluster**, Fluent Bit ships to the in-cluster OpenSearch:
+
+```bash
+helm upgrade observability-logs-opensearch \
+  oci://ghcr.io/openchoreo/helm-charts/observability-logs-opensearch \
+  --namespace openchoreo-observability-plane \
+  --version 0.5.3 \
+  --reuse-values \
+  --set fluent-bit.enabled=true \
+  --set fluentBitCustomizations.clusterInstance=<op-cluster-name> \
+  --set auditLogs.enabled=true
+```
+
+On the **control plane cluster**, install the chart with only Fluent Bit enabled, as in [Remote cluster setup](#remote-cluster-setup-control-plane--data-plane--workflow-plane-clusters), with audit enabled:
+
+```bash
+helm upgrade --install observability-logs-opensearch \
+  oci://ghcr.io/openchoreo/helm-charts/observability-logs-opensearch \
+  --create-namespace \
+  --namespace openchoreo-observability-plane \
+  --version 0.5.3 \
+  --set adapter.enabled=false \
+  --set openSearch.enabled=false \
+  --set openSearchCluster.enabled=false \
+  --set openSearchSetup.enabled=false \
+  --set fluent-bit.enabled=true \
+  --set fluentBitCustomizations.clusterInstance=<cp-cluster-name> \
+  --set fluent-bit.openSearchHost=opensearch.<OBS_BASE_DOMAIN> \
+  --set fluent-bit.openSearchPort=<gateway-tls-passthrough-port> \
+  --set fluent-bit.openSearchVHost=opensearch.<OBS_BASE_DOMAIN> \
+  --set auditLogs.enabled=true
+```
+
+`auditLogs.producers` needs no per-cluster change: it matches on namespace and container name, not on the cluster. Each record carries the `openchoreo_cluster_instance` of the cluster it was collected in.
+
 ### Trusted producers
 
 `auditLogs.producers` is an allowlist, and it is a security boundary rather than ordinary
@@ -251,12 +290,30 @@ Two consequences worth knowing before you change it:
 | `auditLogs.enabled` | `false` | Route audit records to their own index |
 | `auditLogs.indexPrefix` | `audit-logs-` | Index name prefix; daily indices are `audit-logs-YYYY-MM-DD` |
 | `auditLogs.producers` | the two above | The trusted-producer allowlist |
+| `auditLogs.output.host` | `""` | OpenSearch to ship audit records to; empty uses `fluent-bit.openSearchHost` |
+| `auditLogs.output.port` | `fluent-bit.openSearchPort` | Port of `auditLogs.output.host` |
+| `auditLogs.output.vHost` | `auditLogs.output.host` | TLS SNI hostname for `auditLogs.output.host` |
 
 The index template and retention policy are applied on **every** install, whether or not
 `auditLogs.enabled` is set. This is deliberate: an index created before its template gets
 dynamic mappings and answers nothing, and applying the template afterwards does not
 repair indices already written. Until audit is enabled they are metadata against an index
 pattern that matches nothing.
+
+#### Shipping audit records to a separate OpenSearch
+
+By default audit records go to the same OpenSearch as the container logs. To keep the audit trail elsewhere, for example one OpenSearch that several observability planes report their audit records to, set `auditLogs.output.host`:
+
+```bash
+--set auditLogs.output.host=opensearch-audit.<BASE_DOMAIN> \
+--set auditLogs.output.port=<port>
+```
+
+The port falls back to `fluent-bit.openSearchPort` and the SNI hostname to the host, and both are ignored unless the host is set. Setting the host also switches Fluent Bit to the `opensearch-audit-credentials` Secret, even if the host names the same instance, so it must exist in the release namespace with `username` and `password` keys. If it is missing, Fluent Bit logs `variable ${AUDIT_OPENSEARCH_USERNAME} is used but not set` and the destination rejects the writes. Container logs are unaffected.
+
+Records from each cluster keep their `openchoreo_cluster_instance`, so a shared destination can still tell the clusters apart.
+
+This chart only ships records to that OpenSearch. It does not configure it, and the adapter keeps reading audit logs from the in-cluster `opensearch` Service. Apply the audit index template and retention policy on the destination before enabling this. Otherwise the first `audit-logs-*` index gets dynamic mappings, as described above.
 
 ### Retention
 
@@ -314,6 +371,7 @@ The index stays empty and nothing errors. In order of likelihood:
    **namespace** and **container** names.
 3. Audit publishing is disabled on the producer itself. That is configured in the
    OpenChoreo control plane and observability plane charts, not here.
+4. `auditLogs.output.host` is set but the `opensearch-audit-credentials` Secret is missing. Fluent Bit logs `variable ${AUDIT_OPENSEARCH_USERNAME} is used but not set` at startup.
 
 Check what the collector is doing — the audit rules appear as their own emitters:
 

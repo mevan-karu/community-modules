@@ -31,6 +31,17 @@ auditLogs:
       namespace: openchoreo-observability-plane
       container: observer
 
+  # Separate OpenObserve for audit records. Setting host uses the
+  # openobserve-audit-credentials Secret (ZO_ROOT_USER_EMAIL and ZO_ROOT_USER_PASSWORD keys).
+  output:
+    host: ""
+    # Defaults to common.openObservePort.
+    port: ""
+    # Defaults to common.openObserveOrg.
+    org: ""
+    # Defaults to common.openObserveTlsEnabled.
+    tlsEnabled: null
+
 fluent-bit:
   enabled: true
 
@@ -49,6 +60,19 @@ fluent-bit:
       secretKeyRef:
         name: openobserve-admin-credentials
         key: ZO_ROOT_USER_PASSWORD
+  # Credentials for auditLogs.output. Only read when auditLogs.output.host is set.
+  - name: AUDIT_OPENOBSERVE_USERNAME
+    valueFrom:
+      secretKeyRef:
+        name: openobserve-audit-credentials
+        key: ZO_ROOT_USER_EMAIL
+        optional: true
+  - name: AUDIT_OPENOBSERVE_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: openobserve-audit-credentials
+        key: ZO_ROOT_USER_PASSWORD
+        optional: true
 
   fullnameOverride: "fluent-bit"
 

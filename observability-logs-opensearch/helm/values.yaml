@@ -30,6 +30,19 @@ fluent-bit:
       secretKeyRef:
         name: opensearch-admin-credentials
         key: password
+  # Credentials for auditLogs.output. Only read when auditLogs.output.host is set.
+  - name: AUDIT_OPENSEARCH_USERNAME
+    valueFrom:
+      secretKeyRef:
+        name: opensearch-audit-credentials
+        key: username
+        optional: true
+  - name: AUDIT_OPENSEARCH_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: opensearch-audit-credentials
+        key: password
+        optional: true
 
   dnsPolicy: ClusterFirstWithHostNet
   fullnameOverride: "fluent-bit"
@@ -111,6 +124,15 @@ auditLogs:
 
   # Index name prefix. The adapter reads the same value, so the two cannot drift.
   indexPrefix: "audit-logs-"
+
+  # Separate OpenSearch for audit records. Setting host uses the
+  # opensearch-audit-credentials Secret ('username' and 'password' keys).
+  output:
+    host: ""
+    # Defaults to fluent-bit.openSearchPort.
+    port: ""
+    # TLS SNI hostname. Defaults to host.
+    vHost: ""
 
   # The source allowlist, matched on the container log filename the kubelet writes,
   # so a pod cannot satisfy it from its own log line.
